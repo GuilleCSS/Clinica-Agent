@@ -20,7 +20,7 @@ export const clinicaAgent = new Agent({
   4. Tras usar la herramienta, confirma el éxito y recuérdale las 8 horas de ayuno.
   5. Sé breve, conversacional y no pidas disculpas.`,
   model: createGroq({
-    apiKey: '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'
+    apiKey: process.env.GROQ_API_KEY
   })('llama-3.3-70b-versatile'),
   tools: { 
     checkAvailability, 

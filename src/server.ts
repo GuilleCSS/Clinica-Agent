@@ -10,7 +10,7 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-// 1. Conexión directa y blindada a Supabase
+// 1. Conexión segura a Supabase (Usa variables de entorno)
 const supabaseUrl = process.env.SUPABASE_URL || '';
 const supabaseKey = process.env.SUPABASE_KEY || '';
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -26,38 +26,54 @@ app.post('/webhook/chat', async (req, res) => {
     console.log(`\n--- NUEVA PETICIÓN ---`);
     console.log(`[INBOUND] Teléfono: ${phone} | Mensaje: ${message}`);
 
-    // 2. EJECUCIÓN DETERMINISTA (Adiós a la parálisis de la IA)
+    const hoy = new Date().toISOString().split('T')[0]; 
+
+    // 2. CAPA DETERMINISTA: Guardado directo en base de datos
+    // Esto garantiza que la cita se registre aunque la IA tenga "alucinaciones"
     console.log(`[DEBUG] Guardando cita directamente en Supabase...`);
+    
     const { error: dbError } = await supabase
       .from('appointments')
       .insert([
         {
           patient_phone: phone,
-          test_type: 'Análisis de sangre',
-          appointment_date: 'Mañana a las 08:00 AM'
+          test_type: 'Blood Test',
+          appointment_date: 'Tomorrow at 10:00 AM' // Puedes dinamizar esto extrayendo datos del mensaje
         }
       ]);
 
     if (dbError) {
-      console.error(`[ERROR SUPABASE]:`, dbError);
+      console.error(`[ERROR SUPABASE]:`, dbError.message);
     } else {
-      console.log(`[EXITO] ✅ Registro guardado en Supabase para el teléfono ${phone}.`);
+      console.log(`[EXITO] ✅ Registro guardado en Supabase.`);
     }
 
-    // 3. IA ENCARGADA SOLO DE LA COMUNICACIÓN
+    // 3. CAPA GENERATIVA: Comunicación con el paciente
     console.log(`[DEBUG] Pidiendo a Groq que redacte la confirmación...`);
-    const promptConfirmacion = `The patient with phone ${phone} just booked a blood test for tomorrow at 08:00 AM. Draft a polite, short message confirming the appointment and remind them to fast for 8 hours.`;
-    const response = await clinicaAgent.generate(promptConfirmacion);
+    
+    const promptConfirmacion = `
+      Context: A patient with phone ${phone} just booked a blood test for tomorrow at 10:00 AM.
+      Task: Write a short, professional confirmation message in English. 
+      Requirement: Remind them to fast for 8 hours. 
+      Constraint: DO NOT try to use any tools. Just return a plain text response.
+    `;
+
+    // Usamos maxSteps: 0 para forzar una respuesta de texto pura y evitar errores de Tool Calling
+    const response = await clinicaAgent.generate(promptConfirmacion, { 
+      maxSteps: 0 
+    });
     
     let finalReply = response.text;
+
+    // Red de seguridad por si la IA devuelve un string vacío
     if (!finalReply || finalReply.trim() === "") {
-        finalReply = "¡Su cita ha sido agendada con éxito para mañana a las 08:00 AM! Por favor, recuerde presentarse con 8 horas de ayuno.";
+        finalReply = "Your appointment has been successfully scheduled for tomorrow at 10:00 AM. Please remember to fast for 8 hours before your blood test.";
     }
 
-    console.log(`[OUTBOUND] Respuesta: '${finalReply}'`);
+    console.log(`[OUTBOUND] Respuesta: '${finalReply.trim()}'`);
 
     res.json({
-      reply: finalReply,
+      reply: finalReply.trim(),
       agent_status: 'success'
     });
 
