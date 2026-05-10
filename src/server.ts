@@ -29,7 +29,7 @@ app.post('/webhook/chat', async (req, res) => {
     const hoy = new Date().toISOString().split('T')[0]; 
 
     // 2. CAPA DETERMINISTA: Guardado directo en base de datos
-    // Esto garantiza que la cita se registre aunque la IA tenga "alucinaciones"
+
     console.log(`[DEBUG] Guardando cita directamente en Supabase...`);
     
     const { error: dbError } = await supabase
@@ -38,7 +38,7 @@ app.post('/webhook/chat', async (req, res) => {
         {
           patient_phone: phone,
           test_type: 'Blood Test',
-          appointment_date: 'Tomorrow at 10:00 AM' // Puedes dinamizar esto extrayendo datos del mensaje
+          appointment_date: 'Tomorrow at 10:00 AM' 
         }
       ]);
 
@@ -67,7 +67,7 @@ app.post('/webhook/chat', async (req, res) => {
 
     // Red de seguridad por si la IA devuelve un string vacío
     if (!finalReply || finalReply.trim() === "") {
-        finalReply = "Your appointment has been successfully scheduled for tomorrow at 10:00 AM. Please remember to fast for 8 hours before your blood test.";
+        finalReply = "Your appointment has been successfully scheduled for tomorrow at 12:00 PM. Please remember to fast for 8 hours before your blood test.";
     }
 
     console.log(`[OUTBOUND] Respuesta: '${finalReply.trim()}'`);
